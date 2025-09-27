@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import addressService from '../../services/addressService';
+import { API_BASE_URL } from '../../config/api';
 import { useLocation } from '../../hooks/useLocation';
 
 const AddressInput = ({
@@ -30,9 +30,11 @@ const AddressInput = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   
   const abortControllerRef = useRef(null);
   const inputRef = useRef(null);
+  const debounceTimeoutRef = useRef(null);
   const { getCurrentLocation, reverseGeocode } = useLocation();
 
   useEffect(() => {
@@ -44,63 +46,132 @@ const AddressInput = ({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
     };
   }, []);
 
+  /**
+   * Debounced search function to prevent excessive API calls
+   * Waits 300ms after user stops typing before making request
+   */
+  const debouncedSearch = (query) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      searchAddresses(query);
+    }, 300);
+  };
+
+  /**
+   * Searches for ward addresses using the backend API
+   * Includes comprehensive error handling and loading states
+   */
   const searchAddresses = async (query) => {
     if (!query || query.length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
+      setSearchError(null);
       return;
     }
 
     try {
       setLoading(true);
+      setSearchError(null);
+      
+      // Cancel any existing request
       if (abortControllerRef.current) abortControllerRef.current.abort();
       abortControllerRef.current = new AbortController();
-      const results = await addressService.searchWards(
-        query, 
-        abortControllerRef.current.signal
+      
+      const response = await fetch(
+        `${API_BASE_URL}/wards/search?query=${encodeURIComponent(query)}&limit=10`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: abortControllerRef.current.signal,
+        }
       );
-      setSuggestions(results.wards || []);
+
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data && data.data.wards) {
+        setSuggestions(data.data.wards);
+      } else {
+        setSuggestions([]);
+      }
+      
       setShowSuggestions(true);
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error('Address search error:', err);
+        setSearchError('Failed to search addresses. Please try again.');
         setSuggestions([]);
+        setShowSuggestions(false);
       }
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Handles input text changes with debounced search
+   */
   const handleInputChange = (text) => {
     setInputValue(text);
-    addressService.debouncedSearch(text, searchAddresses, 300);
+    setSearchError(null);
+    debouncedSearch(text);
   };
 
+  /**
+   * Handles selection of a suggestion from the dropdown
+   * Autofills all relevant address data
+   */
   const handleSuggestionSelect = (suggestion) => {
-    const addressText = `${suggestion.name}, ${suggestion.municipality?.name || ''}`;
-    setInputValue(addressText);
-    setShowSuggestions(false);
-    Keyboard.dismiss();
+    try {
+      const addressText = `${suggestion.name}${suggestion.municipality?.name ? `, ${suggestion.municipality.name}` : ''}`;
+      
+      setInputValue(addressText);
+      setShowSuggestions(false);
+      setSearchError(null);
+      Keyboard.dismiss();
 
-    onAddressSelect?.({
-      address: addressText,
-      lat: suggestion.lat || null,
-      lng: suggestion.lng || null,
-      municipality_id: suggestion.municipality_id || null,
-      ward_id: suggestion.ward_id || null,
-    });
+      // Call the callback with comprehensive address data
+      onAddressSelect?.({
+        address: addressText,
+        lat: suggestion.lat || null,
+        lng: suggestion.lng || null,
+        municipality_id: suggestion.municipality_id || null,
+        ward_id: suggestion.ward_id || null,
+      });
+    } catch (error) {
+      console.error('Error selecting suggestion:', error);
+      setSearchError('Failed to select address. Please try again.');
+    }
   };
 
+  /**
+   * Handles GPS location detection and reverse geocoding
+   */
   const handleGPSLocation = async () => {
     try {
       setGpsLoading(true);
+      setSearchError(null);
+      
       const location = await getCurrentLocation();
       const address = await reverseGeocode(location.latitude, location.longitude);
+      
       setInputValue(address);
       setShowSuggestions(false);
+      
       onAddressSelect?.({
         address,
         lat: location.latitude,
@@ -110,6 +181,7 @@ const AddressInput = ({
       });
     } catch (err) {
       console.error('GPS location error:', err);
+      setSearchError('Failed to get GPS location. Please check permissions.');
     } finally {
       setGpsLoading(false);
     }
@@ -117,6 +189,7 @@ const AddressInput = ({
 
   const handleFocus = () => {
     setIsFocused(true);
+    setSearchError(null);
     if (inputValue.length >= 3) setShowSuggestions(true);
   };
 
@@ -125,6 +198,9 @@ const AddressInput = ({
     setTimeout(() => setShowSuggestions(false), 150);
   };
 
+  /**
+   * Renders individual suggestion items with proper error handling
+   */
   const renderSuggestion = ({ item }) => (
     <TouchableOpacity
       style={styles.suggestionItem}
@@ -138,6 +214,17 @@ const AddressInput = ({
         )}
       </View>
     </TouchableOpacity>
+  );
+
+  /**
+   * Renders empty state when no suggestions are found
+   */
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyStateText}>
+        {searchError ? searchError : 'No addresses found'}
+      </Text>
+    </View>
   );
 
   return (
@@ -154,6 +241,7 @@ const AddressInput = ({
         styles.inputContainer,
         isFocused && styles.focused,
         error && styles.error,
+        searchError && styles.error,
       ]}>
         <TextInput
           ref={inputRef}
@@ -176,13 +264,19 @@ const AddressInput = ({
               onPress={handleGPSLocation}
               disabled={gpsLoading}
             >
-              {gpsLoading ? <ActivityIndicator size="small" color="#2196F3" /> : <Ionicons name="location" size={20} color="#2196F3" />}
+              {gpsLoading ? (
+                <ActivityIndicator size="small" color="#2196F3" />
+              ) : (
+                <Ionicons name="location" size={20} color="#2196F3" />
+              )}
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {(error || searchError) && (
+        <Text style={styles.errorText}>{error || searchError}</Text>
+      )}
 
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
@@ -193,7 +287,15 @@ const AddressInput = ({
             style={styles.suggestionsList}
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
+            ListEmptyComponent={renderEmptyState}
+            showsVerticalScrollIndicator={false}
           />
+        </View>
+      )}
+
+      {showSuggestions && suggestions.length === 0 && !loading && inputValue.length >= 3 && (
+        <View style={styles.suggestionsContainer}>
+          {renderEmptyState()}
         </View>
       )}
     </View>
@@ -220,6 +322,8 @@ const styles = StyleSheet.create({
   suggestionContent: { marginLeft: 12, flex: 1 },
   suggestionName: { fontSize: 14, color: '#333', fontWeight: '500' },
   suggestionMunicipality: { fontSize: 12, color: '#666', marginTop: 2 },
+  emptyState: { padding: 16, alignItems: 'center' },
+  emptyStateText: { fontSize: 14, color: '#666', textAlign: 'center' },
 });
 
 export default AddressInput;
