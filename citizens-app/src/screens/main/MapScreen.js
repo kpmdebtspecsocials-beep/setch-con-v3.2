@@ -39,7 +39,7 @@ const MapScreen = ({ navigation }) => {
     longitudeDelta: 0.1,
   });
   const [mapReady, setMapReady] = useState(false);
-  const [zoom, setZoom] = useState(10); // <-- keep track of zoom
+  const [zoom, setZoom] = useState(10);
   const { getCurrentLocation } = useLocation();
 
   useEffect(() => {
@@ -99,7 +99,7 @@ const MapScreen = ({ navigation }) => {
 
     try {
       const zoomLevel = calculateZoomLevel(region);
-      setZoom(zoomLevel); // <-- update zoom state
+      setZoom(zoomLevel);
       const newClusters = getClustersForBounds(cluster, region, zoomLevel);
       setClusters(newClusters);
     } catch (err) {
@@ -138,8 +138,7 @@ const MapScreen = ({ navigation }) => {
 
   const renderMarkers = () =>
     clusters.map((item) => {
-      // Only show clusters if zoomed out
-      if (item.type === 'cluster' && zoom < 13) {
+      if (item.type === 'cluster' && zoom < 10) {
         return (
           <Marker
             key={`cluster-${item.id}`}
@@ -152,7 +151,6 @@ const MapScreen = ({ navigation }) => {
           </Marker>
         );
       } else {
-        // Always render stylised markers when zoomed in
         const markerColor = getMarkerColorByCategory(item.report.category);
         return (
           <Marker
@@ -161,7 +159,7 @@ const MapScreen = ({ navigation }) => {
             onPress={() => handleReportPress(item.report)}
           >
             <View style={[styles.reportMarker, { backgroundColor: markerColor }]}>
-              <Ionicons name="location" size={16} color="#fff" />
+              <Ionicons name="location-sharp" size={18} color="#fff" />
             </View>
           </Marker>
         );
@@ -194,19 +192,17 @@ const MapScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Community Map</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={handleRefresh}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#2196F3" />
-            ) : (
-              <Ionicons name="refresh" size={20} color="#2196F3" />
-            )}
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={handleRefresh}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#2196F3" />
+          ) : (
+            <Ionicons name="refresh" size={20} color="#2196F3" />
+          )}
+        </TouchableOpacity>
       </View>
 
       <MapView
@@ -268,22 +264,77 @@ const MapScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 16, color: '#666' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#333' },
-  headerActions: { flexDirection: 'row', alignItems: 'center' },
-  refreshButton: { padding: 8 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#333' },
+  refreshButton: { padding: 6 },
   map: { flex: 1 },
-  clusterMarker: { backgroundColor: '#2196F3', borderRadius: 20, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
-  clusterText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-  reportMarker: { borderRadius: 15, width: 30, height: 30, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.22, shadowRadius: 2.22 },
-  infoPanel: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
+  clusterMarker: {
+    backgroundColor: '#2196F3',
+    borderRadius: 25,
+    width: 45,
+    height: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  clusterText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  reportMarker: {
+    borderRadius: 12,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
+  },
+  infoPanel: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   statItem: { alignItems: 'center' },
   statNumber: { fontSize: 20, fontWeight: 'bold', color: '#2196F3' },
   statLabel: { fontSize: 12, color: '#666', marginTop: 2 },
-  viewAllButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2196F3', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6 },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2196F3',
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
   viewAllText: { color: '#fff', fontSize: 14, fontWeight: '600', marginRight: 8 },
 });
 
