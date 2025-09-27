@@ -39,6 +39,7 @@ const MapScreen = ({ navigation }) => {
     longitudeDelta: 0.1,
   });
   const [mapReady, setMapReady] = useState(false);
+  const [zoom, setZoom] = useState(10); // <-- keep track of zoom
   const { getCurrentLocation } = useLocation();
 
   useEffect(() => {
@@ -56,7 +57,6 @@ const MapScreen = ({ navigation }) => {
       setLoading(true);
       setError(null);
 
-      // Fetch reports without unsupported parameters
       const reportsData = await reportService.getReports();
       setReports(reportsData.reports || []);
 
@@ -98,8 +98,9 @@ const MapScreen = ({ navigation }) => {
     if (!cluster || !region) return;
 
     try {
-      const zoom = calculateZoomLevel(region);
-      const newClusters = getClustersForBounds(cluster, region, zoom);
+      const zoomLevel = calculateZoomLevel(region);
+      setZoom(zoomLevel); // <-- update zoom state
+      const newClusters = getClustersForBounds(cluster, region, zoomLevel);
       setClusters(newClusters);
     } catch (err) {
       console.error('Cluster update error:', err);
@@ -137,7 +138,8 @@ const MapScreen = ({ navigation }) => {
 
   const renderMarkers = () =>
     clusters.map((item) => {
-      if (item.type === 'cluster') {
+      // Only show clusters if zoomed out
+      if (item.type === 'cluster' && zoom < 13) {
         return (
           <Marker
             key={`cluster-${item.id}`}
@@ -150,6 +152,7 @@ const MapScreen = ({ navigation }) => {
           </Marker>
         );
       } else {
+        // Always render stylised markers when zoomed in
         const markerColor = getMarkerColorByCategory(item.report.category);
         return (
           <Marker
