@@ -41,9 +41,7 @@ const AddressInput = ({
 
   useEffect(() => {
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      if (abortControllerRef.current) abortControllerRef.current.abort();
     };
   }, []);
 
@@ -146,10 +144,8 @@ const AddressInput = ({
         <Text style={styles.label}>
           {label}
           {required && <Text style={styles.required}> *</Text>}
-          }
         </Text>
         {!value && !inputValue && <Text style={styles.optional}>Optional</Text>}
-        }
       </View>
 
       <View style={[
@@ -185,7 +181,6 @@ const AddressInput = ({
       </View>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
-      }
 
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
