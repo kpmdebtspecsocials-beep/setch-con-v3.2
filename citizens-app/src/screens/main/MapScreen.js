@@ -297,8 +297,8 @@ const styles = StyleSheet.create({
   clusterText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
   reportMarker: {
     borderRadius: 12,
-    width: 32,
-    height: 32,
+    width: 50,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
