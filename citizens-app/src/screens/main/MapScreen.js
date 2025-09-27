@@ -144,7 +144,6 @@ const MapScreen = ({ navigation }) => {
             key={`cluster-${item.id}`}
             coordinate={item.coordinate}
             onPress={() => handleClusterPress(item.clusterId)}
-            zIndex={500} // stays on top of base map
           >
             <View style={styles.clusterMarker}>
               <Text style={styles.clusterText}>{item.pointCount}</Text>
@@ -158,11 +157,9 @@ const MapScreen = ({ navigation }) => {
             key={`report-${item.id}`}
             coordinate={item.coordinate}
             onPress={() => handleReportPress(item.report)}
-            zIndex={999} // ensures above user dot
           >
             <View style={[styles.pin, { backgroundColor: markerColor }]}>
-              <Ionicons name="alert-circle" size={18} color="#fff" />
-              <View style={[styles.pinTip, { borderTopColor: markerColor }]} />
+              <Ionicons name="location-sharp" size={22} color="#fff" />
             </View>
           </Marker>
         );
@@ -292,40 +289,25 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#fff',
     elevation: 5,
-  },
-  clusterText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
-
-  // Pin-style marker
-  pin: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-    elevation: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
-    shadowRadius: 2.5,
-    transform: [{ scale: 1.1 }],
+    shadowRadius: 3.84,
   },
-  pinTip: {
-    position: 'absolute',
-    bottom: -8,
-    left: '50%',
-    marginLeft: -6,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 8,
-    borderStyle: 'solid',
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
+  clusterText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  pin: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    transform: [{ translateY: -10 }], // makes it pop above the exact coordinate
   },
-
   infoPanel: {
     position: 'absolute',
     bottom: 20,
